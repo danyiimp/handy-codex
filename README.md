@@ -1,7 +1,9 @@
-# Handy Codex
+# Handy
 
 Desktop dictation with global shortcuts, transcription history, local speech models,
 and optional ChatGPT / Codex transcription.
+
+The app is named **Handy**; this fork's repository is `handy-codex`.
 
 This is an independent fork of [Handy](https://github.com/cjpais/Handy), with the
 Codex integration inherited from [Handy Codex](https://github.com/Microck/handy-codex)
@@ -19,7 +21,8 @@ but do not have verified binaries in this release.
 
 1. Install **FFmpeg with libopus** for Codex transcription. On a Homebrew installation:
    `brew install ffmpeg`. Local speech models do not require this extra encoder.
-2. Extract `Handy Codex.app` from the release ZIP and move it to Applications.
+2. Extract the app from the release ZIP and move it to Applications. Current source
+   builds are named `Handy.app`; the initial v0.9.11 release uses `Handy Codex.app`.
 3. Open the app and grant microphone and Accessibility permissions when requested.
    This release is ad-hoc signed, not Apple-notarized; macOS may require the usual
    **Privacy & Security → Open Anyway** approval.
@@ -72,11 +75,11 @@ request; a cancelled recording may remain outside the history database.
 
 ## Existing Handy settings
 
-Handy Codex uses bundle ID `io.handycodex.desktop` and an independent data folder.
+This fork uses bundle ID `io.handycodex.desktop` and an independent data folder.
 It does not overwrite Handy or automatically import private data.
 
 To migrate on macOS, quit both apps and back up your data first. Before the first
-Handy Codex launch, copy
+launch of this fork, copy
 `~/Library/Application Support/com.pais.handy/` to
 `~/Library/Application Support/io.handycodex.desktop/` using Finder. If the target
 already exists, move it to a backup location rather than merging or overwriting it.

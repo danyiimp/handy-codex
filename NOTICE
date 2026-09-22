@@ -1,4 +1,5 @@
-Handy Codex is an independent fork of Handy (https://github.com/cjpais/Handy).
+This Handy build comes from the independent handy-codex fork of
+Handy (https://github.com/cjpais/Handy).
 Original Handy source: Copyright (c) 2025 CJ Pais; MIT license in LICENSE.
 Codex integration and additional upstream work are inherited from
 Microck/handy-codex v0.9.10 (https://github.com/Microck/handy-codex).

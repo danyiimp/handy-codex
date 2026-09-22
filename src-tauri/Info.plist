@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Handy Codex records audio for transcription. Depending on the selected model, audio is processed locally or sent to the selected cloud service.</string>
+  <string>Handy records audio for transcription. Depending on the selected model, audio is processed locally or sent to the selected cloud service.</string>
 </dict>
 </plist>

@@ -101,7 +101,7 @@
     },
     "permissions": {
       "title": "Необходими разрешения",
-      "description": "Handy Codex се нуждае от няколко разрешения, за да работи правилно.",
+      "description": "Handy се нуждае от няколко разрешения, за да работи правилно.",
       "microphone": {
         "title": "Достъп до микрофон",
         "description": "Необходим е, за да чуе гласа ви при транскрипция."
@@ -161,7 +161,7 @@
     "general": {
       "title": "Общи",
       "shortcut": {
-        "title": "Бързи клавиши на Handy Codex",
+        "title": "Бързи клавиши на Handy",
         "description": "Настройте клавишни комбинации за стартиране на запис за реч към текст",
         "loading": "Зареждане на бързите клавиши...",
         "none": "Няма настроени бързи клавиши",
@@ -210,7 +210,7 @@
       },
       "codexAuth": {
         "title": "Codex login file",
-        "description": "Handy Codex uses your existing Codex login for ChatGPT transcription. Choose auth.json manually only if automatic detection cannot find it.",
+        "description": "Handy uses your existing Codex login for ChatGPT transcription. Choose auth.json manually only if automatic detection cannot find it.",
         "auto": "Automatic detection",
         "choose": "Choose auth.json",
         "clear": "Use automatic detection"
@@ -233,7 +233,7 @@
       "searchPlaceholder": "Търсене на модели по име…",
       "rescan": {
         "label": "Сканиране отново",
-        "tooltip": "Сканиране отново за модели, добавени в папката с модели или кеша на Hugging Face извън Handy Codex"
+        "tooltip": "Сканиране отново за модели, добавени в папката с модели или кеша на Hugging Face извън Handy"
       }
     },
     "sound": {
@@ -300,11 +300,11 @@
       },
       "autostart": {
         "label": "Стартиране със системата",
-        "description": "Автоматично стартиране на Handy Codex при влизане в профила ви."
+        "description": "Автоматично стартиране на Handy при влизане в профила ви."
       },
       "showTrayIcon": {
         "label": "Икона в системната област",
-        "description": "Показване на иконата на Handy Codex в системната област."
+        "description": "Показване на иконата на Handy в системната област."
       },
       "overlay": {
         "style": {
@@ -503,7 +503,7 @@
       },
       "updateChecks": {
         "label": "Проверка за актуализации",
-        "description": "Автоматична проверка за нови версии на Handy Codex",
+        "description": "Автоматична проверка за нови версии на Handy",
         "lockedDescription": "Деактивирано от системната конфигурация (HANDY_DISABLE_UPDATER)"
       },
       "soundTheme": {
@@ -581,7 +581,7 @@
       },
       "keyboardDiagnostic": {
         "title": "Диагностика на клавиатурата",
-        "description": "Проверява дали клавиатурните събития достигат до Handy Codex. Записва се само броят на събитията — никога кои клавиши натискате.",
+        "description": "Проверява дали клавиатурните събития достигат до Handy. Записва се само броят на събитията — никога кои клавиши натискате.",
         "run": "Стартиране на 10-секундна диагностика",
         "running": "Слушане… натиснете бързия си клавиш няколко пъти (напр. Option+Space)",
         "secureInputLabel": "Secure Input",
@@ -595,7 +595,7 @@
         "mouse": "Мишка",
         "verdictBlocked": "Secure Input блокира клавишните събития — бързите клавиши с обикновен клавиш не могат да работят, докато това не бъде решено.",
         "verdictSuspicious": "Пристигнаха събития от модификатори, но нито едно клавишно събитие — нещо потиска клавишите, въпреки че Secure Input се отчита като изключен. Моля, съобщете за това в GitHub.",
-        "verdictOk": "Клавишните събития достигат до Handy Codex нормално.",
+        "verdictOk": "Клавишните събития достигат до Handy нормално.",
         "verdictNoEvents": "Не са уловени събития — натиснахте ли някакви клавиши по време на теста?",
         "failed": "Диагностиката е неуспешна: {{error}}"
       },
@@ -617,17 +617,17 @@
     "about": {
       "title": "За приложението",
       "project": {
-        "title": "About Handy Codex",
-        "description": "Handy Codex is a community fork that adds ChatGPT / Codex transcription through your existing Codex OAuth login.",
-        "details": "Handy Codex keeps Handy Codex's local Whisper and Parakeet transcription options while adding ChatGPT / Codex models. It also includes global shortcuts, configurable microphones, transcription history, and optional post-processing."
+        "title": "About Handy",
+        "description": "Handy is a community fork that adds ChatGPT / Codex transcription through your existing Codex OAuth login.",
+        "details": "Based on cjpais/Handy, with Codex integration from Microck/handy-codex. Cloud mode sends audio to OpenAI using your existing Codex login. Local models remain available."
       },
       "version": {
         "title": "Версия",
-        "description": "Текуща версия на Handy Codex"
+        "description": "Текуща версия на Handy"
       },
       "appDataDirectory": {
         "title": "Папка с данни на приложението",
-        "description": "Мястото, където Handy Codex съхранява данните си"
+        "description": "Мястото, където Handy съхранява данните си"
       },
       "sourceCode": {
         "title": "Изходен код",
@@ -636,7 +636,7 @@
       },
       "supportDevelopment": {
         "title": "Подкрепете разработката",
-        "description": "Помогнете ни да продължим да развиваме Handy Codex",
+        "description": "Помогнете ни да продължим да развиваме Handy",
         "button": "Дарение"
       },
       "acknowledgments": {
@@ -644,12 +644,12 @@
         "ggml": {
           "title": "ggml",
           "description": "Високопроизводително изпълнение на автоматичния модел за разпознаване на реч Whisper на OpenAI",
-          "details": "Handy Codex използва ggml за бързо локално реч-към-текст. Благодарности на Georgi Gerganov и сътрудниците за отличната работа."
+          "details": "Handy използва ggml за бързо локално реч-към-текст. Благодарности на Georgi Gerganov и сътрудниците за отличната работа."
         }
       },
       "whatsNewUpdates": {
         "label": "Показвай новостите",
-        "description": "Показвай бележки към изданието след актуализации на Handy Codex"
+        "description": "Показвай бележки към изданието след актуализации на Handy"
       }
     }
   },
@@ -678,7 +678,7 @@
     "noOptionsFound": "Няма намерени опции"
   },
   "accessibility": {
-    "permissionsDescription": "Handy Codex се нуждае от разрешения за достъпност, за да въвежда транскрибирания текст.",
+    "permissionsDescription": "Handy се нуждае от разрешения за достъпност, за да въвежда транскрибирания текст.",
     "openSettings": "Отваряне на системните настройки"
   },
   "errors": {
@@ -701,11 +701,11 @@
   },
   "appLanguage": {
     "title": "Език на приложението",
-    "description": "Промяна на езика на интерфейса на Handy Codex"
+    "description": "Промяна на езика на интерфейса на Handy"
   },
   "theme": {
     "title": "Тема на приложението",
-    "description": "Изберете дали Handy Codex да следва системната тема, или да остане светла или тъмна",
+    "description": "Изберете дали Handy да следва системната тема, или да остане светла или тъмна",
     "options": {
       "system": "Системна",
       "light": "Светла",
@@ -717,7 +717,7 @@
     "processing": "Обработка..."
   },
   "whatsNew": {
-    "title": "Ново в Handy Codex v{{version}}"
+    "title": "Ново в Handy v{{version}}"
   },
   "secureInput": {
     "blockedWithCulprit_one": "{{name}} може да блокира 1 бърз клавиш",
@@ -731,6 +731,6 @@
     "dismiss": "Отхвърляне"
   },
   "branding": {
-    "appName": "Handy Codex"
+    "appName": "Handy"
   }
 }

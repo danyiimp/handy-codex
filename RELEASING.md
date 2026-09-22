@@ -1,4 +1,8 @@
-# Building Handy Codex releases
+# Building Handy releases from handy-codex
+
+The app display name is Handy and the macOS bundle is `Handy.app`. The fork's
+repository and release destination remain `danyiimp/handy-codex`; its bundle ID
+and data directory remain `io.handycodex.desktop`.
 
 The initial release targets macOS Apple Silicon. Source builds for other platforms
 inherit Handy's requirements in [BUILD.md](BUILD.md), but are not validated by the

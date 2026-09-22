@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Handy Codex",
+  "productName": "Handy",
   "version": "0.9.11",
   "identifier": "io.handycodex.desktop",
   "build": {

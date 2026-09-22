@@ -16,7 +16,7 @@ const HandyTextLogo = ({
       width={width}
       height={height}
       className={className}
-      viewBox="0 0 260 60"
+      viewBox="0 0 130 60"
       role="img"
       aria-label={t("branding.appName")}
       xmlns="http://www.w3.org/2000/svg"
@@ -24,8 +24,6 @@ const HandyTextLogo = ({
       <text
         x="0"
         y="43"
-        textLength="260"
-        lengthAdjust="spacingAndGlyphs"
         fontFamily="system-ui, sans-serif"
         fontSize="38"
         fontWeight="700"
