@@ -1,3 +1,7 @@
+> Handy Codex fork: see [RELEASING.md](RELEASING.md) for the verified release
+> procedure, separate bundle identity, and Codex FFmpeg requirement. The following
+> platform notes are inherited from Handy; historical application paths refer to upstream.
+
 # Build Instructions
 
 This guide covers how to set up the development environment and build Handy from source across different platforms.

@@ -7,8 +7,10 @@ use std::collections::HashSet;
 use std::error::Error as StdError;
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
 const CODEX_CHATGPT_PROVIDER_ID: &str = "codex_chatgpt";
+const CODEX_CHATGPT_BASE_URL: &str = "https://chatgpt.com/backend-api/codex";
 const CODEX_RESPONSES_PATH: &str = "/responses";
 const CODEX_MODELS_PATH: &str = "/models";
 
@@ -148,13 +150,17 @@ fn build_headers(provider: &PostProcessProvider, api_key: &str) -> Result<Header
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
     headers.insert(
         REFERER,
-        HeaderValue::from_static("https://github.com/cjpais/Handy"),
+        HeaderValue::from_static("https://github.com/danyiimp/handy-codex"),
     );
     headers.insert(
         USER_AGENT,
-        HeaderValue::from_static("Handy/1.0 (+https://github.com/cjpais/Handy)"),
+        HeaderValue::from_static(concat!(
+            "HandyCodex/",
+            env!("CARGO_PKG_VERSION"),
+            " (+https://github.com/danyiimp/handy-codex)"
+        )),
     );
-    headers.insert("X-Title", HeaderValue::from_static("Handy"));
+    headers.insert("X-Title", HeaderValue::from_static("Handy Codex"));
 
     // Provider-specific auth headers
     if !api_key.is_empty() {
@@ -308,6 +314,7 @@ pub async fn send_chat_completion(
     model: &str,
     prompt: String,
     disable_reasoning: bool,
+    auth_file: Option<&Path>,
 ) -> Result<Option<String>, String> {
     send_chat_completion_with_schema(
         provider,
@@ -317,7 +324,7 @@ pub async fn send_chat_completion(
         None,
         None,
         disable_reasoning,
-        None,
+        auth_file,
     )
     .await
 }
@@ -529,6 +536,15 @@ fn codex_auth_path(auth_file: Option<&Path>) -> std::path::PathBuf {
         .unwrap_or_else(crate::managers::codex_asr::default_auth_file)
 }
 
+fn codex_url(provider: &PostProcessProvider, path: &str) -> Result<String, String> {
+    // This provider uses the user's Codex login, rather than a key supplied for
+    // an arbitrary server. Never forward it to a URL loaded from edited settings.
+    if provider.base_url.trim_end_matches('/') != CODEX_CHATGPT_BASE_URL {
+        return Err("Codex requests require https://chatgpt.com/backend-api/codex".to_string());
+    }
+    Ok(format!("{CODEX_CHATGPT_BASE_URL}{path}"))
+}
+
 fn codex_client(
     auth_file: Option<&Path>,
 ) -> Result<(reqwest::Client, crate::managers::codex_asr::CodexAuth), String> {
@@ -536,15 +552,15 @@ fn codex_client(
         .map_err(|error| error.to_string())?;
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", auth.access_token))
-            .map_err(|error| format!("Invalid Codex authorization header: {error}"))?,
-    );
+    let mut authorization = HeaderValue::from_str(&format!("Bearer {}", auth.access_token))
+        .map_err(|error| format!("Invalid Codex authorization header: {error}"))?;
+    authorization.set_sensitive(true);
+    headers.insert(AUTHORIZATION, authorization);
     headers.insert("originator", HeaderValue::from_static("Codex Desktop"));
     headers.insert(
         USER_AGENT,
-        HeaderValue::from_static("Codex Desktop/26.707.8479.0 (Windows; x64)"),
+        HeaderValue::from_str(&crate::managers::codex_asr::desktop_user_agent())
+            .map_err(|error| format!("Invalid Codex user agent header: {error}"))?,
     );
     if let Some(account_id) = auth.account_id.as_deref() {
         headers.insert(
@@ -555,6 +571,10 @@ fn codex_client(
     }
     let client = reqwest::Client::builder()
         .default_headers(headers)
+        .https_only(true)
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(300))
         .build()
         .map_err(|error| report_reqwest_error("Failed to build Codex HTTP client", &error))?;
     Ok((client, auth))
@@ -567,12 +587,8 @@ async fn send_codex_response(
     system_prompt: Option<String>,
     auth_file: Option<&Path>,
 ) -> Result<Option<String>, String> {
+    let url = codex_url(provider, CODEX_RESPONSES_PATH)?;
     let (client, _) = codex_client(auth_file)?;
-    let url = format!(
-        "{}{}",
-        provider.base_url.trim_end_matches('/'),
-        CODEX_RESPONSES_PATH
-    );
     let mut request = serde_json::json!({
         "model": model,
         "input": user_content,
@@ -596,13 +612,18 @@ async fn send_codex_response(
         .map_err(|error| report_reqwest_error("Failed to read Codex response", &error))?;
     if !status.is_success() {
         return Err(match status.as_u16() {
-            401 | 403 => "Codex login expired; sign in again".to_string(),
+            401 => "Codex authentication rejected (HTTP 401); open Codex to renew the login"
+                .to_string(),
+            403 => {
+                "Codex post-processing access denied (HTTP 403); check account and workspace access"
+                    .to_string()
+            }
             429 => "Codex rate limit reached; try again later".to_string(),
             code => format!("Codex post-processing failed with HTTP {code}"),
         });
     }
 
-    let output = parse_codex_sse_output(&body);
+    let output = parse_codex_sse_output(&body)?;
     Ok((!output.trim().is_empty()).then_some(output))
 }
 
@@ -610,12 +631,8 @@ async fn fetch_codex_models(
     provider: &PostProcessProvider,
     auth_file: Option<&Path>,
 ) -> Result<Vec<String>, String> {
+    let url = codex_url(provider, CODEX_MODELS_PATH)?;
     let (client, _) = codex_client(auth_file)?;
-    let url = format!(
-        "{}{}",
-        provider.base_url.trim_end_matches('/'),
-        CODEX_MODELS_PATH
-    );
     let response = client
         .get(&url)
         .send()
@@ -624,7 +641,10 @@ async fn fetch_codex_models(
     let status = response.status();
     if !status.is_success() {
         return Err(match status.as_u16() {
-            401 | 403 => "Codex login expired; sign in again".to_string(),
+            401 => "Codex authentication rejected (HTTP 401); open Codex to renew the login"
+                .to_string(),
+            403 => "Codex model access denied (HTTP 403); check account and workspace access"
+                .to_string(),
             code => format!("Codex model request failed with HTTP {code}"),
         });
     }
@@ -655,21 +675,75 @@ fn parse_model_ids(value: Value) -> Vec<String> {
         .collect()
 }
 
-fn parse_codex_sse_output(body: &str) -> String {
-    body.lines()
-        .filter_map(|line| line.strip_prefix("data: "))
-        .filter_map(|data| serde_json::from_str::<Value>(data).ok())
-        .filter_map(|event| {
-            if event.get("type").and_then(Value::as_str) == Some("response.output_text.delta") {
-                event
-                    .get("delta")
-                    .and_then(Value::as_str)
-                    .map(str::to_string)
-            } else {
-                None
+fn parse_codex_sse_output(body: &str) -> Result<String, String> {
+    let mut output = String::new();
+    let mut completed = false;
+    let mut data = Vec::new();
+    let mut event_name = String::new();
+
+    // Parse complete SSE events, including CRLF and multiline data fields.
+    // A terminal success is mandatory: deltas alone can be a truncated response.
+    for line in body.lines().chain(std::iter::once("")) {
+        if line.is_empty() {
+            if !data.is_empty() {
+                let payload = data.join("\n");
+                if payload.trim() != "[DONE]" {
+                    let event: Value = serde_json::from_str(&payload)
+                        .map_err(|_| "Codex returned an invalid response event".to_string())?;
+                    let kind = event
+                        .get("type")
+                        .and_then(Value::as_str)
+                        .unwrap_or(&event_name);
+                    match kind {
+                        "error" | "response.failed" => {
+                            return Err("Codex post-processing failed during streaming".to_string());
+                        }
+                        "response.incomplete" => {
+                            return Err(
+                                "Codex post-processing returned an incomplete response".to_string()
+                            );
+                        }
+                        "response.output_text.delta" => {
+                            if completed {
+                                return Err(
+                                    "Codex returned text after completing the response".to_string()
+                                );
+                            }
+                            let delta =
+                                event.get("delta").and_then(Value::as_str).ok_or_else(|| {
+                                    "Codex returned an invalid text event".to_string()
+                                })?;
+                            output.push_str(delta);
+                        }
+                        "response.completed" => {
+                            if event
+                                .pointer("/response/status")
+                                .and_then(Value::as_str)
+                                .is_some_and(|status| status != "completed")
+                            {
+                                return Err(
+                                    "Codex response did not complete successfully".to_string()
+                                );
+                            }
+                            completed = true;
+                        }
+                        _ => {}
+                    }
+                }
             }
-        })
-        .collect()
+            data.clear();
+            event_name.clear();
+        } else if let Some(value) = line.strip_prefix("data:") {
+            data.push(value.strip_prefix(' ').unwrap_or(value));
+        } else if let Some(value) = line.strip_prefix("event:") {
+            event_name = value.strip_prefix(' ').unwrap_or(value).to_string();
+        }
+    }
+
+    if !completed {
+        return Err("Codex response ended before completion".to_string());
+    }
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -684,10 +758,131 @@ mod tests {
             "event: response.output_text.delta\n",
             "data: {\"type\":\"response.output_text.delta\",\"delta\":\"Clean \"}\n\n",
             "data: {\"type\":\"response.output_text.delta\",\"delta\":\"text\"}\n\n",
+            "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\"}}\n\n",
             "data: [DONE]\n\n",
         );
 
-        assert_eq!(parse_codex_sse_output(body), "Clean text");
+        assert_eq!(parse_codex_sse_output(body).unwrap(), "Clean text");
+    }
+
+    #[test]
+    fn codex_sse_parser_rejects_failed_or_incomplete_partial_output() {
+        for kind in ["response.failed", "response.incomplete", "error"] {
+            let body = format!(
+                "data: {{\"type\":\"response.output_text.delta\",\"delta\":\"PRIVATE TEXT\"}}\n\n\
+                 data: {{\"type\":\"{kind}\",\"error\":{{\"message\":\"PRIVATE ERROR\"}}}}\n\n"
+            );
+            let error = parse_codex_sse_output(&body).unwrap_err();
+            assert!(!error.contains("PRIVATE"));
+        }
+    }
+
+    #[test]
+    fn codex_sse_parser_requires_completion_even_with_done_marker() {
+        for ending in ["", "data: [DONE]\n\n"] {
+            let body = format!(
+                "data: {{\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}}\n\n{ending}"
+            );
+            assert!(parse_codex_sse_output(&body).is_err());
+        }
+    }
+
+    #[test]
+    fn codex_sse_parser_supports_sse_line_formats() {
+        let body = concat!(
+            ": heartbeat\r\n\r\n",
+            "event: response.output_text.delta\r\n",
+            "data:{\r\n",
+            "data: \"delta\":\"Привет\"}\r\n\r\n",
+            "event: response.completed\r\n",
+            "data: {}",
+        );
+        assert_eq!(parse_codex_sse_output(body).unwrap(), "Привет");
+    }
+
+    #[test]
+    fn codex_sse_parser_rejects_malformed_and_contradictory_events() {
+        for body in [
+            "data: PRIVATE INVALID JSON\n\ndata: {\"type\":\"response.completed\"}\n\n",
+            "data: {\"type\":\"response.completed\",\"response\":{\"status\":\"incomplete\"}}\n\n",
+            "data: {\"type\":\"response.completed\"}\n\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"late\"}\n\n",
+            "event: error\ndata: {\"message\":\"PRIVATE ERROR\"}\n\n",
+        ] {
+            let error = parse_codex_sse_output(body).unwrap_err();
+            assert!(!error.contains("PRIVATE"));
+        }
+    }
+
+    #[test]
+    fn codex_urls_allow_only_the_builtin_https_destination() {
+        for base_url in [
+            CODEX_CHATGPT_BASE_URL,
+            "https://chatgpt.com/backend-api/codex/",
+        ] {
+            let provider = provider(CODEX_CHATGPT_PROVIDER_ID, base_url);
+            assert_eq!(
+                codex_url(&provider, CODEX_RESPONSES_PATH).unwrap(),
+                "https://chatgpt.com/backend-api/codex/responses"
+            );
+            assert_eq!(
+                codex_url(&provider, CODEX_MODELS_PATH).unwrap(),
+                "https://chatgpt.com/backend-api/codex/models"
+            );
+        }
+
+        for base_url in [
+            "http://chatgpt.com/backend-api/codex",
+            "https://example.com/backend-api/codex",
+            "https://chatgpt.com.example.com/backend-api/codex",
+            "https://user:secret@chatgpt.com/backend-api/codex",
+            "https://@chatgpt.com/backend-api/codex",
+            "https://chatgpt.com/backend-api/codex?secret=value",
+            "https://chatgpt.com/backend-api/codex#fragment",
+            "https://chatgpt.com/backend-api/codex/other",
+            "https://chatgpt.com:8443/backend-api/codex",
+        ] {
+            let provider = provider(CODEX_CHATGPT_PROVIDER_ID, base_url);
+            let error = codex_url(&provider, CODEX_RESPONSES_PATH).unwrap_err();
+            assert!(!error.contains("secret"));
+        }
+    }
+
+    #[tokio::test]
+    async fn codex_rejects_other_destinations_before_reading_auth() {
+        let provider = provider(CODEX_CHATGPT_PROVIDER_ID, "http://127.0.0.1:1");
+        let directory = tempfile::tempdir().unwrap();
+        let missing_auth = directory.path().join("missing-auth.json");
+        let error = send_chat_completion_with_schema(
+            &provider,
+            String::new(),
+            "test-model",
+            "test text".to_string(),
+            None,
+            None,
+            false,
+            Some(&missing_auth),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.starts_with("Codex requests require"));
+        let error = fetch_codex_models(&provider, Some(&missing_auth))
+            .await
+            .unwrap_err();
+        assert!(error.starts_with("Codex requests require"));
+    }
+
+    #[tokio::test]
+    async fn codex_client_reads_the_selected_auth_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let auth_file = directory.path().join("selected-auth.json");
+        std::fs::write(
+            &auth_file,
+            r#"{"tokens":{"access_token":"synthetic-test-token","account_id":"synthetic-test-account"}}"#,
+        )
+        .unwrap();
+        let (_, auth) = codex_client(Some(&auth_file)).unwrap();
+        assert_eq!(auth.access_token, "synthetic-test-token");
+        assert_eq!(auth.account_id.as_deref(), Some("synthetic-test-account"));
     }
 
     #[test]

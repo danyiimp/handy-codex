@@ -321,6 +321,10 @@ async fn post_process_transcription(settings: &AppSettings, transcription: &str)
         &model,
         processed_prompt,
         disable_reasoning,
+        settings
+            .codex_auth_file
+            .as_deref()
+            .map(std::path::Path::new),
     )
     .await
     {
@@ -747,9 +751,9 @@ impl ShortcutAction for TranscribeAction {
                     match transcription_result {
                         Ok(transcription) => {
                             debug!(
-                                "Transcription completed in {:?}: '{}'",
+                                "Transcription completed in {:?} ({} bytes)",
                                 transcription_time.elapsed(),
-                                transcription
+                                transcription.len()
                             );
 
                             if post_process {

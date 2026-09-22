@@ -15,7 +15,7 @@ interface UpdateCheckerProps {
 }
 
 const RELEASES_API_URL =
-  "https://api.github.com/repos/Microck/handy-codex/releases/latest";
+  "https://api.github.com/repos/danyiimp/handy-codex/releases/latest";
 
 type GitHubRelease = {
   tag_name: string;

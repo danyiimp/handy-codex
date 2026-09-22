@@ -1,0 +1,43 @@
+name: Fork verification
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/**"
+      - "package.json"
+      - "bun.lock"
+      - "src-tauri/src/managers/codex_asr.rs"
+      - "src-tauri/src/llm_client.rs"
+      - "tests/transport/**"
+      - ".github/workflows/transport-tests.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "package.json"
+      - "bun.lock"
+      - "src-tauri/src/managers/codex_asr.rs"
+      - "src-tauri/src/llm_client.rs"
+      - "tests/transport/**"
+      - ".github/workflows/transport-tests.yml"
+permissions:
+  contents: read
+jobs:
+  transport:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: tests/transport
+      - run: cargo test --manifest-path tests/transport/Cargo.toml --locked --jobs 2
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx tsc --noEmit
+      - run: bun run lint
+      - run: bun run check:translations
+      - run: bun test src/components/update-checker/portableInstaller.test.ts

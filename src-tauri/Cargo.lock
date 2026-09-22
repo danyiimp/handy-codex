@@ -2427,7 +2427,7 @@ dependencies = [
 
 [[package]]
 name = "handy"
-version = "0.9.10"
+version = "0.9.11"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2451,6 +2451,7 @@ dependencies = [
  "objc2-foundation",
  "objc2-service-management",
  "once_cell",
+ "plist",
  "rdev",
  "regex",
  "reqwest 0.12.28",
@@ -2487,6 +2488,7 @@ dependencies = [
  "tokio",
  "transcribe-cpp",
  "transcribe-rs",
+ "uuid",
  "vad-rs",
  "windows 0.61.3",
  "winreg 0.55.0",

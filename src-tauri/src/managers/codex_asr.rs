@@ -1,13 +1,13 @@
 use anyhow::{Context, Result};
-use reqwest::blocking::{multipart, Client};
-use reqwest::header::{AUTHORIZATION, USER_AGENT};
+use reqwest::blocking::Client;
+use reqwest::header::{HeaderValue, AUTHORIZATION, CONTENT_TYPE, USER_AGENT};
 use serde::Deserialize;
 use serde_json::Value;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 pub const CODEX_ASR_ENDPOINT: &str = "https://chatgpt.com/backend-api/transcribe";
-const DEFAULT_USER_AGENT: &str = "Codex Desktop/26.707.8479.0 (Windows; x64)";
+
 const SAMPLE_RATE: u32 = 16_000;
 
 #[derive(Clone, Debug)]
@@ -32,49 +32,66 @@ impl CodexAsrClient {
     }
 
     pub fn transcribe(&self, audio: &[f32], language: &str) -> Result<String> {
-        let auth = load_auth(&self.auth_file)?;
-        let wav = encode_wav(audio)?;
-        if wav.len() <= 44 {
+        if audio.is_empty() {
             return Ok(String::new());
         }
-
-        let file = multipart::Part::bytes(wav)
-            .file_name("recording.wav")
-            .mime_str("audio/wav")?;
-        let mut form = multipart::Form::new().part("file", file);
-        if language != "auto" && !language.trim().is_empty() {
-            form = form.text("language", language.to_string());
-        }
-
-        let mut request = Client::builder()
+        let auth = load_auth(&self.auth_file)?;
+        let audio = encode_webm(audio)?;
+        let boundary = format!("----codex-transcribe-{}", uuid::Uuid::new_v4());
+        let body = encode_multipart(&audio, language, &boundary);
+        let client = Client::builder()
             .timeout(std::time::Duration::from_secs(300))
-            .build()?
-            .post(&self.endpoint)
-            .header(AUTHORIZATION, format!("Bearer {}", auth.access_token))
-            .header("originator", "Codex Desktop")
-            .header(USER_AGENT, DEFAULT_USER_AGENT)
-            .multipart(form);
-        if let Some(account_id) = auth.account_id {
-            request = request.header("ChatGPT-Account-Id", account_id);
+            .connect_timeout(std::time::Duration::from_secs(15))
+            .redirect(reqwest::redirect::Policy::none())
+            .https_only(true)
+            .build()?;
+        let send = |auth: &CodexAuth| -> Result<reqwest::blocking::Response> {
+            let mut authorization =
+                HeaderValue::from_str(&format!("Bearer {}", auth.access_token))?;
+            authorization.set_sensitive(true);
+            let mut request = client
+                .post(&self.endpoint)
+                .header(AUTHORIZATION, authorization)
+                .header("originator", "Codex Desktop")
+                .header(USER_AGENT, desktop_user_agent())
+                .header(
+                    CONTENT_TYPE,
+                    format!("multipart/form-data; boundary={boundary}"),
+                )
+                .body(body.clone());
+            if let Some(account_id) = &auth.account_id {
+                request = request.header("ChatGPT-Account-Id", account_id);
+            }
+            Ok(request.send()?)
+        };
+        let mut response = send(&auth)?;
+        // Codex owns token refresh. Re-read once if it refreshed the same account
+        // while the request was in flight; never rotate its shared refresh token.
+        if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+            if let Ok(updated) = load_auth(&self.auth_file) {
+                if can_retry_with_auth(&auth, &updated) {
+                    response = send(&updated)?;
+                }
+            }
         }
-
-        let response = request.send()?;
         let status = response.status();
-        let body = response.text()?;
         if !status.is_success() {
-            let message = match status.as_u16() {
-                401 | 403 => "Codex login expired; sign in again".to_string(),
-                429 => "Codex transcription rate limit reached; try again later".to_string(),
-                code => format!("Codex transcription failed with HTTP {code}"),
-            };
-            anyhow::bail!(message);
+            anyhow::bail!(http_error(status.as_u16()));
         }
-
-        let response: TranscriptionResponse = serde_json::from_str(&body).with_context(|| {
-            format!("Codex transcription returned invalid JSON: {}", clip(&body))
+        // Error pages can contain private data. Do not copy the body into logs.
+        let response: TranscriptionResponse = response.json().map_err(|_| {
+            anyhow::anyhow!("Codex transcription returned an invalid JSON response")
         })?;
         Ok(response.text.trim().to_string())
     }
+}
+
+fn can_retry_with_auth(previous: &CodexAuth, updated: &CodexAuth) -> bool {
+    previous.access_token != updated.access_token
+        && matches!(
+            (&previous.account_id, &updated.account_id),
+            (Some(previous), Some(updated)) if previous == updated
+        )
 }
 
 impl Default for CodexAsrClient {
@@ -83,7 +100,7 @@ impl Default for CodexAsrClient {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(crate) struct CodexAuth {
     pub(crate) access_token: String,
     pub(crate) account_id: Option<String>,
@@ -135,11 +152,15 @@ pub(crate) fn load_auth(path: &Path) -> Result<CodexAuth> {
         .filter(|token| !token.is_empty())
         .context("Codex login file has no access token")?
         .to_string();
-    let account_id = tokens
-        .get("account_id")
-        .and_then(Value::as_str)
-        .map(str::to_string)
-        .or_else(|| account_id_from_jwt(&access_token));
+    // Desktop derives the account from the bearer token; a stale cached
+    // account_id must not route a current token to a different workspace.
+    let account_id = account_id_from_jwt(&access_token).or_else(|| {
+        tokens
+            .get("account_id")
+            .and_then(Value::as_str)
+            .filter(|id| !id.trim().is_empty())
+            .map(str::to_string)
+    });
     Ok(CodexAuth {
         access_token,
         account_id,
@@ -156,6 +177,7 @@ fn account_id_from_jwt(access_token: &str) -> Option<String> {
         .get("https://api.openai.com/auth")?
         .get("chatgpt_account_id")?
         .as_str()
+        .filter(|id| !id.trim().is_empty())
         .map(str::to_string)
 }
 
@@ -200,13 +222,125 @@ fn encode_wav(audio: &[f32]) -> Result<Vec<u8>> {
     Ok(output.into_inner())
 }
 
-fn clip(value: &str) -> String {
-    let value = value.replace(['\r', '\n'], " ");
-    if value.len() > 500 {
-        format!("{}...", &value[..500])
-    } else {
-        value
+fn http_error(status: u16) -> String {
+    match status {
+        401 => "Codex authentication rejected (HTTP 401); open Codex to renew the login".into(),
+        403 => "Codex transcription access denied (HTTP 403); check account and workspace access"
+            .into(),
+        429 => "Codex transcription rate limit reached (HTTP 429); try again later".into(),
+        code => format!("Codex transcription failed with HTTP {code}"),
     }
+}
+
+/// Match the installed desktop version and Electron platform names. If no
+/// desktop installation is available, identify Handy Codex instead of inventing one.
+pub(crate) fn desktop_user_agent() -> String {
+    let version = installed_desktop_version();
+    user_agent(
+        version.as_deref(),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+    )
+}
+
+fn user_agent(version: Option<&str>, os: &str, arch: &str) -> String {
+    let platform = match os {
+        "macos" => "Mac OS",
+        "windows" => "Windows NT 10.0",
+        "linux" => "X11; Linux",
+        other => other,
+    };
+    let arch = match arch {
+        "aarch64" => "arm64",
+        "x86_64" => "x64",
+        other => other,
+    };
+    match version {
+        Some(version) => format!("Codex Desktop/{version} ({platform}; {arch})"),
+        None => format!(
+            "HandyCodex/{} ({platform}; {arch})",
+            env!("CARGO_PKG_VERSION")
+        ),
+    }
+}
+
+fn valid_version(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .split('.')
+            .all(|part| !part.is_empty() && part.bytes().all(|c| c.is_ascii_digit()))
+}
+
+fn installed_desktop_version() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut roots = vec![PathBuf::from("/Applications")];
+        if let Some(home) = std::env::var_os("HOME") {
+            roots.push(PathBuf::from(home).join("Applications"));
+        }
+        for root in roots {
+            for app in ["ChatGPT.app", "Codex.app"] {
+                let bundle = root.join(app).join("Contents");
+                // ChatGPT Classic does not contain the Codex runtime.
+                if !bundle.join("Resources/codex").is_file() {
+                    continue;
+                }
+                if let Ok(info) = plist::Value::from_file(bundle.join("Info.plist")) {
+                    if let Some(version) = info
+                        .as_dictionary()
+                        .and_then(|d| d.get("CFBundleShortVersionString"))
+                        .and_then(plist::Value::as_string)
+                    {
+                        if valid_version(version) {
+                            return Some(version.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn encode_multipart(audio: &[u8], language: &str, boundary: &str) -> Vec<u8> {
+    let mut body = format!("--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"codex.webm\"\r\nContent-Type: audio/webm;codecs=opus\r\n\r\n").into_bytes();
+    body.extend_from_slice(audio);
+    body.extend_from_slice(b"\r\n");
+    if language != "auto" && !language.trim().is_empty() {
+        body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"language\"\r\n\r\n{language}\r\n").as_bytes());
+    }
+    body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
+    body
+}
+
+fn encode_webm(audio: &[f32]) -> Result<Vec<u8>> {
+    // Desktop records WebM/Opus with Chromium MediaRecorder. FFmpeg gives us
+    // the same media format, but is a different encoder/muxer implementation.
+    // Keep temporary audio private and delete it on every exit path.
+    let temp = tempfile::tempdir()?;
+    let input = temp.path().join("recording.wav");
+    let output = temp.path().join("recording.webm");
+    std::fs::write(&input, encode_wav(audio)?)?;
+    let ffmpeg = [
+        "/opt/homebrew/bin/ffmpeg",
+        "/usr/local/bin/ffmpeg",
+        "/usr/bin/ffmpeg",
+    ]
+    .into_iter()
+    .find(|path| Path::new(path).is_file())
+    .unwrap_or("ffmpeg");
+    let result = std::process::Command::new(ffmpeg)
+        .args(["-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i"])
+        .arg(&input)
+        .args([
+            "-vn", "-c:a", "libopus", "-ar", "48000", "-ac", "1", "-b:a", "128k", "-f", "webm",
+        ])
+        .arg(&output)
+        .stdin(std::process::Stdio::null())
+        .output()
+        .context("Codex WebM encoding requires FFmpeg with libopus installed")?;
+    anyhow::ensure!(result.status.success(), "Codex WebM audio encoding failed");
+    std::fs::read(output).context("Cannot read encoded Codex audio")
 }
 
 #[cfg(test)]
@@ -248,7 +382,9 @@ mod tests {
     fn auth_path_uses_windows_userprofile_when_home_is_missing() {
         assert_eq!(
             resolve_auth_file(None, None, Some(Path::new(r"C:\Users\Microck")), None,),
-            PathBuf::from(r"C:\Users\Microck\.codex\auth.json")
+            PathBuf::from(r"C:\Users\Microck")
+                .join(".codex")
+                .join("auth.json")
         );
     }
 
@@ -263,6 +399,74 @@ mod tests {
             ),
             PathBuf::from(r"D:\Shared\auth.json")
         );
+    }
+
+    #[test]
+    fn desktop_profile_matches_electron_platform_names() {
+        assert_eq!(
+            user_agent(Some("26.911.61220"), "macos", "aarch64"),
+            "Codex Desktop/26.911.61220 (Mac OS; arm64)"
+        );
+        assert_eq!(
+            user_agent(Some("26.911.61220"), "windows", "x86_64"),
+            "Codex Desktop/26.911.61220 (Windows NT 10.0; x64)"
+        );
+        assert!(user_agent(None, "linux", "x86_64").starts_with("HandyCodex/"));
+        assert!(!valid_version("26.1\r\nx-header: value"));
+    }
+
+    #[test]
+    fn multipart_matches_desktop_framing() {
+        let body = encode_multipart(b"audio", "ru", "boundary");
+        assert_eq!(body, b"--boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"codex.webm\"\r\nContent-Type: audio/webm;codecs=opus\r\n\r\naudio\r\n--boundary\r\nContent-Disposition: form-data; name=\"language\"\r\n\r\nru\r\n--boundary--\r\n");
+        let automatic = String::from_utf8(encode_multipart(b"audio", "auto", "boundary")).unwrap();
+        assert!(!automatic.contains("name=\"language\""));
+    }
+
+    #[test]
+    fn denied_access_is_not_reported_as_expired_login() {
+        assert!(http_error(403).contains("access denied"));
+        assert!(http_error(401).contains("authentication rejected"));
+        assert!(http_error(429).contains("rate limit"));
+    }
+
+    #[test]
+    fn current_token_account_wins_over_stale_cached_account() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let token = format!(
+            "header.{}.sig",
+            base64_json(&json!({"https://api.openai.com/auth": {"chatgpt_account_id": "current"}}))
+        );
+        std::fs::write(
+            file.path(),
+            json!({"tokens": {"access_token": token, "account_id": "stale"}}).to_string(),
+        )
+        .unwrap();
+        assert_eq!(
+            load_auth(file.path()).unwrap().account_id.as_deref(),
+            Some("current")
+        );
+    }
+
+    #[test]
+    fn retry_requires_a_known_unchanged_account_and_new_token() {
+        let auth = |token: &str, account: Option<&str>| CodexAuth {
+            access_token: token.into(),
+            account_id: account.map(str::to_string),
+        };
+        assert!(can_retry_with_auth(
+            &auth("old", Some("a")),
+            &auth("new", Some("a"))
+        ));
+        assert!(!can_retry_with_auth(&auth("old", None), &auth("new", None)));
+        assert!(!can_retry_with_auth(
+            &auth("old", Some("a")),
+            &auth("new", Some("b"))
+        ));
+        assert!(!can_retry_with_auth(
+            &auth("old", Some("a")),
+            &auth("old", Some("a"))
+        ));
     }
 
     fn base64_json(value: &Value) -> String {

@@ -101,7 +101,7 @@
     },
     "permissions": {
       "title": "Потрібні дозволи",
-      "description": "Handy потребує деяких дозволів для коректної роботи.",
+      "description": "Handy Codex потребує деяких дозволів для коректної роботи.",
       "microphone": {
         "title": "Доступ до мікрофона",
         "description": "Потрібен для прослуховування вашого голосу для транскрипції."
@@ -162,7 +162,7 @@
       "title": "Загальні",
       "codexAuth": {
         "title": "Codex login file",
-        "description": "Handy uses your existing Codex login for ChatGPT transcription. Choose auth.json manually only if automatic detection cannot find it.",
+        "description": "Handy Codex uses your existing Codex login for ChatGPT transcription. Choose auth.json manually only if automatic detection cannot find it.",
         "auto": "Automatic detection",
         "choose": "Choose auth.json",
         "clear": "Use automatic detection"
@@ -221,7 +221,7 @@
       "searchPlaceholder": "Пошук моделей за назвою…",
       "rescan": {
         "label": "Пересканувати",
-        "tooltip": "Пересканувати моделі, додані до папки моделей або кешу Hugging Face поза межами Handy"
+        "tooltip": "Пересканувати моделі, додані до папки моделей або кешу Hugging Face поза межами Handy Codex"
       }
     },
     "sound": {
@@ -282,11 +282,11 @@
       },
       "autostart": {
         "label": "Запуск при старті системи",
-        "description": "Автоматично запускати Handy при вході в систему"
+        "description": "Автоматично запускати Handy Codex при вході в систему"
       },
       "showTrayIcon": {
         "label": "Показати значок у треї",
-        "description": "Відображати значок Handy у системному треї."
+        "description": "Відображати значок Handy Codex у системному треї."
       },
       "overlay": {
         "style": {
@@ -472,7 +472,7 @@
       },
       "updateChecks": {
         "label": "Перевірка оновлень",
-        "description": "Автоматично перевіряти наявність нових версій Handy"
+        "description": "Автоматично перевіряти наявність нових версій Handy Codex"
       },
       "soundTheme": {
         "label": "Звукова тема",
@@ -545,7 +545,7 @@
       },
       "keyboardDiagnostic": {
         "title": "Діагностика клавіатури",
-        "description": "Перевіряє, чи доходять події клавіатури до Handy. Записується лише кількість подій — ніколи те, які клавіші ви натискаєте.",
+        "description": "Перевіряє, чи доходять події клавіатури до Handy Codex. Записується лише кількість подій — ніколи те, які клавіші ви натискаєте.",
         "run": "Запустити 10-секундну діагностику",
         "running": "Прослуховування… натисніть свою комбінацію кілька разів (наприклад, Option+Space)",
         "secureInputLabel": "Secure Input",
@@ -559,7 +559,7 @@
         "mouse": "Миша",
         "verdictBlocked": "Secure Input блокує події клавіш — комбінації зі звичайною клавішею не працюватимуть, доки це не буде усунуто.",
         "verdictSuspicious": "Події модифікаторів надходять, а події клавіш — ні: щось пригнічує клавіші, хоча Secure Input позначено як вимкнений. Будь ласка, повідомте про це на GitHub.",
-        "verdictOk": "Події клавіш надходять до Handy нормально.",
+        "verdictOk": "Події клавіш надходять до Handy Codex нормально.",
         "verdictNoEvents": "Подій не зафіксовано — ви натискали клавіші під час тесту?",
         "failed": "Не вдалося виконати діагностику: {{error}}"
       },
@@ -576,15 +576,15 @@
       "project": {
         "title": "About Handy Codex",
         "description": "Handy Codex is a community fork that adds ChatGPT / Codex transcription through your existing Codex OAuth login.",
-        "details": "Handy Codex keeps Handy's local Whisper and Parakeet transcription options while adding ChatGPT / Codex models. It also includes global shortcuts, configurable microphones, transcription history, and optional post-processing."
+        "details": "Handy Codex keeps Handy Codex's local Whisper and Parakeet transcription options while adding ChatGPT / Codex models. It also includes global shortcuts, configurable microphones, transcription history, and optional post-processing."
       },
       "version": {
         "title": "Версія",
-        "description": "Поточна версія Handy"
+        "description": "Поточна версія Handy Codex"
       },
       "appDataDirectory": {
         "title": "Папка даних програми",
-        "description": "Розташування даних Handy"
+        "description": "Розташування даних Handy Codex"
       },
       "sourceCode": {
         "title": "Вихідний код",
@@ -593,7 +593,7 @@
       },
       "supportDevelopment": {
         "title": "Підтримати розробку",
-        "description": "Допоможіть нам продовжувати розвивати Handy",
+        "description": "Допоможіть нам продовжувати розвивати Handy Codex",
         "button": "Підтримати"
       },
       "acknowledgments": {
@@ -601,12 +601,12 @@
         "ggml": {
           "title": "ggml",
           "description": "Високопродуктивний інференс моделі автоматичного розпізнавання мовлення Whisper від OpenAI",
-          "details": "Handy використовує ggml для швидкої локальної обробки мовлення в текст. Дякуємо за чудову роботу Георгію Герганову та контриб'юторам."
+          "details": "Handy Codex використовує ggml для швидкої локальної обробки мовлення в текст. Дякуємо за чудову роботу Георгію Герганову та контриб'юторам."
         }
       },
       "whatsNewUpdates": {
         "label": "Показувати новини",
-        "description": "Показувати примітки до випуску після оновлень Handy"
+        "description": "Показувати примітки до випуску після оновлень Handy Codex"
       }
     }
   },
@@ -635,7 +635,7 @@
     "noOptionsFound": "Опцій не знайдено"
   },
   "accessibility": {
-    "permissionsDescription": "Handy потребує дозволи доступності для введення транскрибованого тексту.",
+    "permissionsDescription": "Handy Codex потребує дозволи доступності для введення транскрибованого тексту.",
     "openSettings": "Відкрити Системні налаштування"
   },
   "errors": {
@@ -658,11 +658,11 @@
   },
   "appLanguage": {
     "title": "Мова інтерфейсу",
-    "description": "Змінити мову інтерфейсу Handy"
+    "description": "Змінити мову інтерфейсу Handy Codex"
   },
   "theme": {
     "title": "Тема застосунку",
-    "description": "Виберіть, чи має Handy слідувати темі системи, чи залишатися світлою або темною",
+    "description": "Виберіть, чи має Handy Codex слідувати темі системи, чи залишатися світлою або темною",
     "options": {
       "system": "Системна",
       "light": "Світла",
@@ -674,7 +674,7 @@
     "processing": "Постобробка..."
   },
   "whatsNew": {
-    "title": "Нове в Handy v{{version}}"
+    "title": "Нове в Handy Codex v{{version}}"
   },
   "secureInput": {
     "blockedWithCulprit_one": "{{name}} може блокувати 1 комбінацію клавіш",
@@ -686,5 +686,8 @@
     "learnMore": "Як це виправити",
     "recorderBlocked": "Зараз неможливо записати комбінацію — Secure Input у macOS блокує події клавіш. Спершу усуньте попередження про Secure Input.",
     "dismiss": "Приховати"
+  },
+  "branding": {
+    "appName": "Handy Codex"
   }
 }

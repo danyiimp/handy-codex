@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Handy",
-  "version": "0.9.10",
-  "identifier": "com.pais.handy",
+  "productName": "Handy Codex",
+  "version": "0.9.11",
+  "identifier": "io.handycodex.desktop",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",

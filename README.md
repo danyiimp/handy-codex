@@ -1,46 +1,98 @@
 # Handy Codex
 
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
+Desktop dictation with global shortcuts, transcription history, local speech models,
+and optional ChatGPT / Codex transcription.
 
-**A free, open source, and extensible speech-to-text application that works completely offline. Now with ChatGPT / Codex ASR**
+This is an independent fork of [Handy](https://github.com/cjpais/Handy), with the
+Codex integration inherited from [Handy Codex](https://github.com/Microck/handy-codex)
+v0.9.10 and additional transport, credential-handling, and error-handling fixes.
+It is not affiliated with or endorsed by Handy, OpenAI, or the Handy Codex maintainer.
 
-Handy Codex is a fork of [Handy](https://github.com/cjpais/Handy), a cross-platform desktop application that provides simple, privacy-focused speech transcription. Press a shortcut, speak, and have your words appear in any text field. This happens on your own computer without sending any information to the cloud.
+## Download
 
-## wtf (why this fork)
+Get the macOS Apple Silicon build from
+[Releases](https://github.com/danyiimp/handy-codex/releases).
+The initial release is experimental. Other platforms retain upstream source support
+but do not have verified binaries in this release.
 
-I wanted Handy's local speech-to-text workflow with an additional Codex-powered option. Upstream Handy is built around local models. This fork adds **ChatGPT / Codex** as a selectable transcription provider, so you can use your existing Codex login for remote transcription when you prefer it.
+1. Install **FFmpeg with libopus** for Codex transcription. On a Homebrew installation:
+   `brew install ffmpeg`. Local speech models do not require this extra encoder.
+2. Extract `Handy Codex.app` from the release ZIP and move it to Applications.
+3. Open the app and grant microphone and Accessibility permissions when requested.
+   This release is ad-hoc signed, not Apple-notarized; macOS may require the usual
+   **Privacy & Security → Open Anyway** approval.
+4. For cloud transcription, sign in using Codex, then select **Codex / ChatGPT** in
+   Models. The app reads your existing `~/.codex/auth.json`; a custom file can be
+   selected in settings. No credentials are included in the download.
+5. Configure the keyboard shortcut and record a short test. Stop other dictation
+   apps using the same shortcut first.
 
-What is different here:
+## What changed
 
-- **Codex transcription**: choose ChatGPT / Codex from the model selector. Handy Codex reads the existing Codex `auth.json` login and sends recordings to the ChatGPT transcription endpoint. No separate API key is required.
-- **Local models remain available**: Whisper, Parakeet, and the existing offline workflow are still included. Codex is an additional option, not a replacement for local transcription.
+- WebM/Opus uploads and multipart framing aligned with the inspected desktop batch
+  transcription path.
+- Desktop version discovery instead of a hardcoded Windows user-agent.
+- Auth is re-read for each request, with account checks on the one permitted retry
+  after a changed token. Codex retains ownership of token refresh.
+- Redirects are rejected, requests have timeouts, and Codex post-processing accepts
+  only its canonical service URL.
+- Failed, incomplete, or truncated post-processing streams return an error.
+- Normal transcription logs omit full transcript text. History retention remains
+  controlled by the app settings.
+- Independent app branding, data directory, and release links.
 
-This is not an official Handy release and is not affiliated with or endorsed by the Handy maintainers. The fork follows upstream changes through its own repository so these additions can evolve independently.
+Read [CODEX_TRANSPORT.md](CODEX_TRANSPORT.md) for the exact scope and verification.
 
-For the upstream project, see [cjpais/Handy](https://github.com/cjpais/Handy). For this fork's releases, issues, and changes, use [Microck/handy-codex](https://github.com/Microck/handy-codex).
+## Privacy and service limitations
 
+Local models process audio locally. **Codex mode sends audio to OpenAI**, using an
+existing Codex login and the internal `/backend-api/transcribe` endpoint. This is
+not the documented public transcription API, and it can change or become unavailable.
+A successful request does not establish permission for third-party use or guarantee
+that an account will never face restrictions.
 
-<img width="680" height="566" alt="image" src="https://github.com/user-attachments/assets/7ef29b6b-8751-4c00-8d81-dbbb2c767ce9" />
+The app does **not** promise indistinguishability from Codex Desktop. Its HTTP/TLS
+stack, encoder metadata, audio preprocessing, and refresh behavior differ. It does
+not copy or fabricate server integrity state, cookies, or device attestation.
 
+The initial local macOS binary has **Apple Intelligence post-processing disabled**
+because it was built with Command Line Tools. Codex transcription remains available.
+Cancelling suppresses output but does not abort an already running blocking cloud
+request; a cancelled recording may remain outside the history database.
 
-## Quick Start
+## Existing Handy settings
 
-### Installation
+Handy Codex uses bundle ID `io.handycodex.desktop` and an independent data folder.
+It does not overwrite Handy or automatically import private data.
 
-1. Download the latest Handy Codex release from the [releases page](https://github.com/Microck/handy-codex/releases)
-   - The upstream Homebrew cask and winget package install Handy, not Handy Codex.
-2. Install the application
-3. **macOS**: the app is not notarized, so macOS Gatekeeper will block the first launch. Right-click (or Control-click) the app and select **Open**, then click **Open** again in the dialog. If that doesn't work (macOS Sequoia+), go to **System Settings → Privacy & Security**, scroll to Security, and click **Open Anyway**. You only need to do this once.
-4. Launch Handy and grant necessary system permissions (microphone, accessibility)
-5. Configure your preferred keyboard shortcuts in Settings
-6. Start transcribing!
+To migrate on macOS, quit both apps and back up your data first. Before the first
+Handy Codex launch, copy
+`~/Library/Application Support/com.pais.handy/` to
+`~/Library/Application Support/io.handycodex.desktop/` using Finder. If the target
+already exists, move it to a backup location rather than merging or overwriting it.
+This copies models, settings, history, and recordings, including any saved provider
+credentials. Keep the copy local. Permissions must be granted separately for the new app.
 
- ### Development Setup
- 
- For detailed build instructions including platform-specific requirements, see [BUILD.md](BUILD.md).
- 
-## License
+## Development and verification
 
-MIT License - see [LICENSE](LICENSE) file for details.
+See [BUILD.md](BUILD.md) for inherited platform prerequisites and
+[RELEASING.md](RELEASING.md) for this fork's build and packaging procedure.
+Transport regression tests can run without the native audio engines:
 
-Handy is open-source software, but the Handy name, logo, icon, and brand assets are not open-source. Unofficial forks, rewrites, and redistributions must use their own branding and must not imply endorsement or affiliation.
+```sh
+cargo test --manifest-path tests/transport/Cargo.toml --locked --jobs 2
+bun install --frozen-lockfile
+bunx tsc --noEmit
+bun test src/components/update-checker/portableInstaller.test.ts
+```
+
+Report fork-specific problems in
+[this repository](https://github.com/danyiimp/handy-codex/issues).
+Do not include auth files, access tokens, private recordings, or transcripts in reports.
+
+## License and attribution
+
+Source code is distributed under the [MIT license](LICENSE). Original copyright
+notices are retained. Handy's name, logo, and brand assets are separate from its
+source-code license. This unofficial fork uses original artwork and retains
+Handy attribution; no endorsement is implied. See [NOTICE](NOTICE).

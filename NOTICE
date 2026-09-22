@@ -1,0 +1,12 @@
+Handy Codex is an independent fork of Handy (https://github.com/cjpais/Handy).
+Original Handy source: Copyright (c) 2025 CJ Pais; MIT license in LICENSE.
+Codex integration and additional upstream work are inherited from
+Microck/handy-codex v0.9.10 (https://github.com/Microck/handy-codex).
+The original source history and contributor attribution are preserved.
+
+Handy Codex artwork in src-tauri/icons/sources and the replacement UI logos
+are original artwork contributed to this fork under the MIT license.
+Handy and Codex names identify the original projects and services; no endorsement
+or affiliation is implied. No OpenAI desktop source or binary is redistributed.
+Dependencies retain their respective licenses; see Cargo.lock and bun.lock for
+exact source dependencies.

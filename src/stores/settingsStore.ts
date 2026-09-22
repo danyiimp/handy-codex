@@ -145,8 +145,7 @@ const settingUpdaters: {
     commands.changeMuteWhileRecordingSetting(value as boolean),
   append_trailing_space: (value) =>
     commands.changeAppendTrailingSpaceSetting(value as boolean),
-  app_language: (value) =>
-    commands.changeAppLanguageSetting(value as string),
+  app_language: (value) => commands.changeAppLanguageSetting(value as string),
   codex_auth_file: (value) =>
     commands.changeCodexAuthFileSetting(value as string | null),
   theme: (value) => commands.changeThemeSetting(value as string),
