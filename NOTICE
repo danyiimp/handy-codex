@@ -5,10 +5,10 @@ Codex integration and additional upstream work are inherited from
 Microck/handy-codex v0.9.10 (https://github.com/Microck/handy-codex).
 The original source history and contributor attribution are preserved.
 
-The blue hand application icon is inherited from Microck/handy-codex and is
-derived from Handy's original hand logo. Original project attribution is retained.
-The remaining artwork in src-tauri/icons/sources and the replacement UI logos
-are original artwork contributed to this fork under the MIT license.
+The blue hand application icon and stylized Handy wordmark are inherited from
+Microck/handy-codex and derived from Handy's original artwork. Original project
+attribution is retained. The remaining artwork in src-tauri/icons/sources and
+the waveform UI symbol are contributed to this fork under the MIT license.
 Handy and Codex names identify the original projects and services; no endorsement
 or affiliation is implied. No OpenAI desktop source or binary is redistributed.
 Dependencies retain their respective licenses; see Cargo.lock and bun.lock for
