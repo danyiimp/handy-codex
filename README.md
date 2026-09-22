@@ -76,7 +76,9 @@ request; a cancelled recording may remain outside the history database.
 ## Existing Handy settings
 
 This fork uses bundle ID `io.handycodex.desktop` and an independent data folder.
-It does not overwrite Handy or automatically import private data.
+It does not automatically import private data from upstream Handy. Both apps are
+named `Handy.app`; move the existing app to a backup location before installing
+this fork in the same Applications folder.
 
 To migrate on macOS, quit both apps and back up your data first. Before the first
 launch of this fork, copy
