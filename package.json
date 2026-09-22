@@ -14,9 +14,11 @@
     "format:check": "prettier --check . && cd src-tauri && cargo fmt -- --check",
     "format:frontend": "prettier --write .",
     "format:backend": "cd src-tauri && cargo fmt",
+    "test:keyboard": "bun src/lib/utils/keyboard.test.ts",
     "test:playwright": "playwright test",
     "test:playwright:ui": "playwright test --ui",
     "check:translations": "bun scripts/check-translations.ts",
+    "check:model-languages": "bun scripts/check-model-language-coverage.ts",
     "postinstall": "bun scripts/check-nix-deps.ts"
   },
   "dependencies": {
@@ -40,7 +42,6 @@
     "react-i18next": "^16.4.1",
     "react-markdown": "^10.1.0",
     "react-select": "^5.8.0",
-    "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwindcss": "^4.1.16",
     "tauri-plugin-macos-permissions-api": "2.3.0",

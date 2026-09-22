@@ -6,8 +6,7 @@ on:
       - "src/**"
       - "package.json"
       - "bun.lock"
-      - "src-tauri/src/managers/codex_asr.rs"
-      - "src-tauri/src/llm_client.rs"
+      - "src-tauri/**"
       - "tests/transport/**"
       - ".github/workflows/transport-tests.yml"
   pull_request:
@@ -15,8 +14,7 @@ on:
       - "src/**"
       - "package.json"
       - "bun.lock"
-      - "src-tauri/src/managers/codex_asr.rs"
-      - "src-tauri/src/llm_client.rs"
+      - "src-tauri/**"
       - "tests/transport/**"
       - ".github/workflows/transport-tests.yml"
 permissions:
@@ -40,4 +38,7 @@ jobs:
       - run: bunx tsc --noEmit
       - run: bun run lint
       - run: bun run check:translations
+      - run: bun run check:model-languages
+      - run: bun run test:keyboard
+      - run: bun test src/components/settings/history/clipboard.test.ts
       - run: bun test src/components/update-checker/portableInstaller.test.ts

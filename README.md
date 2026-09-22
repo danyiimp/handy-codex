@@ -6,6 +6,8 @@ and optional ChatGPT / Codex transcription.
 This is an independent fork of [Handy](https://github.com/cjpais/Handy), with the
 Codex integration inherited from [Handy Codex](https://github.com/Microck/handy-codex)
 v0.9.10 and additional transport, credential-handling, and error-handling fixes.
+The source also incorporates Handy main through `8f9cf53` (2026-09-19), including
+recording fixes, shortcut activation modes, and the updated local inference engine.
 It is not affiliated with or endorsed by Handy, OpenAI, or the Handy Codex maintainer.
 
 ## Download
@@ -42,6 +44,14 @@ but do not have verified binaries in this release.
 - Independent app branding, data directory, and release links.
 
 Read [CODEX_TRANSPORT.md](CODEX_TRANSPORT.md) for the exact scope and verification.
+
+## Troubleshooting
+
+For inherited device, shortcut, clipboard, and platform behavior, see the
+[upstream troubleshooting notes](https://github.com/cjpais/Handy/blob/8f9cf53/README.md#troubleshooting).
+Those notes use upstream app paths; this fork uses the separate paths below.
+Existing hold/toggle settings migrate to the corresponding shortcut mode; new
+installations default to tap-or-hold behavior.
 
 ## Privacy and service limitations
 
