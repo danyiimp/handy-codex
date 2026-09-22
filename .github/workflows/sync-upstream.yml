@@ -3,6 +3,10 @@ name: Sync upstream Handy
 on:
   workflow_dispatch:
 
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -33,7 +37,11 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          branch="sync/upstream-$(date -u +%Y%m%d-%H%M%S)"
+          branch="chore/sync-upstream"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "::error::An upstream sync branch already exists. Merge its PR or resolve the pending work before starting another sync."
+            exit 1
+          fi
           git switch -c "$branch"
           if ! git merge --no-edit upstream/main; then
             # Keep only the intentionally fork-owned release workflow. Any

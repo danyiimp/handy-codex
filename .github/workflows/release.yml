@@ -11,6 +11,12 @@ jobs:
       release-id: ${{ steps.create-release.outputs.result }}
       version: ${{ steps.get-version.outputs.version }}
     steps:
+      - name: Require main for releases
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run the release workflow from main."
+          exit 1
+
       - name: Checkout repository
         uses: actions/checkout@v5
 

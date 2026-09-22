@@ -2,6 +2,18 @@
 
 This file provides guidance to AI coding assistants working with code in this repository.
 
+## Fork branch workflow
+
+- `main` is the default branch and the source for releases in `danyiimp/handy-codex`.
+- Keep working branches short-lived. When isolation is useful, use descriptive
+  `fix/`, `feat/`, or `chore/` names; do not use a `codex/` prefix.
+- Integrate verified changes into `main` as part of completing the task. Do not
+  leave completed work on a separate long-lived fork branch.
+- After integration, verify that `main` contains the work and delete the completed
+  branch both locally and on GitHub. Preserve branches with unmerged work.
+- The upstream sync workflow uses only `chore/sync-upstream`; finish an existing
+  sync before starting another. GitHub deletes merged PR branches automatically.
+
 ## Development Commands
 
 **Prerequisites:**

@@ -4,6 +4,10 @@ The app display name is Handy and the macOS bundle is `Handy.app`. The fork's
 repository and release destination remain `danyiimp/handy-codex`; its bundle ID
 and data directory remain `io.handycodex.desktop`.
 
+`main` is the default branch and release source. Run the Release workflow from
+`main` after verification; the workflow rejects other branches. Use temporary
+`fix/`, `feat/`, or `chore/` branches when needed and delete them after integration.
+
 The initial release targets macOS Apple Silicon. Source builds for other platforms
 inherit Handy's requirements in [BUILD.md](BUILD.md), but are not validated by the
 initial release. GitHub's cross-platform build workflow remains manually available;
