@@ -104,5 +104,6 @@ Do not include auth files, access tokens, private recordings, or transcripts in 
 
 Source code is distributed under the [MIT license](LICENSE). Original copyright
 notices are retained. Handy's name, logo, and brand assets are separate from its
-source-code license. This unofficial fork uses original artwork and retains
-Handy attribution; no endorsement is implied. See [NOTICE](NOTICE).
+source-code license. This unofficial fork retains the blue hand icon inherited
+from Microck/handy-codex, adds fork artwork, and preserves Handy attribution;
+no endorsement is implied. See [NOTICE](NOTICE).
