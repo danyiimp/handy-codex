@@ -57,13 +57,17 @@ uuid = { version = "1", features = ["v4"] }
 tempfile = "3"
 log = "0.4.25"
 env_filter = "0.1.0"
-tokio = "1.43.0"
+tokio = { version = "1.43.0", features = ["sync", "time", "macros", "net", "rt", "io-util"] }
 vad-rs = { git = "https://github.com/cjpais/vad-rs", default-features = false }
 earshot = "1.2.2"
 enigo = "0.6.1"
 rodio = { git = "https://github.com/cjpais/rodio.git" }
 reqwest = { version = "0.12", features = ["blocking", "json", "multipart", "stream", "gzip", "brotli", "deflate"] }
 futures-util = "0.3"
+tokio-tungstenite = { version = "0.30", features = ["native-tls"] }
+tokio-native-tls = "0.3"
+native-tls = "0.2"
+base64 = "0.22"
 rustfft = "6.4.0"
 strsim = "0.11.0"
 natural = "0.5.0"

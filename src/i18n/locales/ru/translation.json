@@ -234,6 +234,16 @@
         "auto": "Automatic detection",
         "choose": "Choose auth.json",
         "clear": "Use automatic detection"
+      },
+      "openaiApiKey": {
+        "title": "Ключ OpenAI API",
+        "description": "Ключ для официальных моделей транскрипции OpenAI (GPT-Transcribe, GPT-Live-Transcribe). Оплата поминутная, списывается с вашего аккаунта OpenAI. Если пусто — используется переменная окружения OPENAI_API_KEY.",
+        "placeholder": "sk-…",
+        "save": "Сохранить",
+        "clear": "Удалить ключ",
+        "show": "Показать",
+        "hide": "Скрыть",
+        "toggleVisibility": "Показать или скрыть ключ"
       }
     },
     "sound": {

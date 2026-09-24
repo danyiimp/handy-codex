@@ -1374,6 +1374,28 @@ pub fn change_codex_auth_file_setting(app: AppHandle, path: Option<String>) -> R
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_openai_api_key_setting(app: AppHandle, key: Option<String>) -> Result<(), String> {
+    let key = key
+        .map(|value| {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                return Err("OpenAI API key cannot be whitespace".to_string());
+            }
+            if trimmed.len() < 20 {
+                return Err("OpenAI API key looks too short to be valid".to_string());
+            }
+            Ok(trimmed.to_string())
+        })
+        .transpose()?;
+
+    let mut settings = settings::get_settings(&app);
+    settings.openai_api_key = key;
+    save_accelerator_and_reload_next_use(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_show_tray_icon_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.show_tray_icon = enabled;

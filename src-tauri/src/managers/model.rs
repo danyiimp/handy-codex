@@ -38,9 +38,24 @@ pub enum EngineType {
     Cohere,
     /// Remote transcription through the user's existing Codex login.
     CodexAsr,
+    /// Remote batch transcription through the official OpenAI Platform API
+    /// (`gpt-transcribe`).
+    OpenAiApi,
+    /// Remote live transcription through the OpenAI Realtime transcription
+    /// API (`gpt-live-transcribe`).
+    OpenAiLiveAsr,
 }
 
 pub const CODEX_ASR_MODEL_ID: &str = "codex-chatgpt-asr";
+pub const OPENAI_API_ASR_MODEL_ID: &str = "openai-gpt-transcribe";
+pub const OPENAI_LIVE_ASR_MODEL_ID: &str = "openai-gpt-live-transcribe";
+
+/// Remote providers never resolve to a local model file or download state.
+pub(crate) fn is_remote_model_id(model_id: &str) -> bool {
+    model_id == CODEX_ASR_MODEL_ID
+        || model_id == OPENAI_API_ASR_MODEL_ID
+        || model_id == OPENAI_LIVE_ASR_MODEL_ID
+}
 
 /// Where a model comes from and how Handy obtains it — the routing discriminant
 /// for downloading and on-disk resolution.
@@ -573,6 +588,69 @@ impl ModelManager {
                 supports_language_selection: false,
                 is_custom: false,
                 supports_streaming: false,
+                supports_language_detection: true,
+            },
+        );
+
+        // Official OpenAI Platform API transcription. Same registry treatment
+        // as the Codex provider: no local file, always "downloaded", billed to
+        // the user's API key.
+        available_models.insert(
+            OPENAI_API_ASR_MODEL_ID.to_string(),
+            ModelInfo {
+                id: OPENAI_API_ASR_MODEL_ID.to_string(),
+                name: "OpenAI GPT-Transcribe".to_string(),
+                description:
+                    "Official OpenAI API batch transcription (billed per minute to your API key)."
+                        .to_string(),
+                filename: String::new(),
+                source: ModelSource::Url {
+                    url: String::new(),
+                    sha256: None,
+                },
+                size_mb: 0,
+                is_downloaded: true,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::OpenAiApi,
+                accuracy_score: 0.0,
+                speed_score: 0.0,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: Vec::new(),
+                supports_language_selection: false,
+                is_custom: false,
+                supports_streaming: false,
+                supports_language_detection: true,
+            },
+        );
+
+        available_models.insert(
+            OPENAI_LIVE_ASR_MODEL_ID.to_string(),
+            ModelInfo {
+                id: OPENAI_LIVE_ASR_MODEL_ID.to_string(),
+                name: "OpenAI GPT-Live-Transcribe".to_string(),
+                description: "Official OpenAI API live streaming transcription with real-time preview (billed per minute to your API key).".to_string(),
+                filename: String::new(),
+                source: ModelSource::Url {
+                    url: String::new(),
+                    sha256: None,
+                },
+                size_mb: 0,
+                is_downloaded: true,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::OpenAiLiveAsr,
+                accuracy_score: 0.0,
+                speed_score: 0.0,
+                supports_translation: false,
+                is_recommended: false,
+                supported_languages: Vec::new(),
+                supports_language_selection: false,
+                is_custom: false,
+                supports_streaming: true,
                 supports_language_detection: true,
             },
         );
@@ -1421,7 +1499,7 @@ impl ModelManager {
         let mut vanished_models: Vec<String> = Vec::new();
 
         for model in models.values_mut() {
-            if model.id == CODEX_ASR_MODEL_ID {
+            if is_remote_model_id(&model.id) {
                 model.is_downloaded = true;
                 model.is_downloading = false;
                 model.partial_size = 0;

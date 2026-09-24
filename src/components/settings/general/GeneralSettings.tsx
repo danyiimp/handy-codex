@@ -13,6 +13,7 @@ import { VolumeSlider } from "../VolumeSlider";
 import { MuteWhileRecording } from "../MuteWhileRecording";
 import { ModelSettingsCard } from "./ModelSettingsCard";
 import { CodexAuthSettings } from "./CodexAuthSettings";
+import { OpenAiApiKeySettings } from "./OpenAiApiKeySettings";
 
 export const GeneralSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -28,6 +29,7 @@ export const GeneralSettings: React.FC = () => {
       </SettingsGroup>
       <ModelSettingsCard />
       <CodexAuthSettings />
+      <OpenAiApiKeySettings />
       <SettingsGroup title={t("settings.sound.title")}>
         <MicrophoneSelector descriptionMode="tooltip" grouped={true} />
         <ChannelSelector descriptionMode="tooltip" grouped={true} />

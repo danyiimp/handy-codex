@@ -214,6 +214,16 @@
         "auto": "Automatic detection",
         "choose": "Choose auth.json",
         "clear": "Use automatic detection"
+      },
+      "openaiApiKey": {
+        "title": "OpenAI API key",
+        "description": "API key for the official OpenAI transcription models (GPT-Transcribe, GPT-Live-Transcribe). Usage is billed per minute to your OpenAI account. Falls back to the OPENAI_API_KEY environment variable when empty.",
+        "placeholder": "sk-…",
+        "save": "Save",
+        "clear": "Remove key",
+        "show": "Show",
+        "hide": "Hide",
+        "toggleVisibility": "Toggle key visibility"
       }
     },
     "models": {
