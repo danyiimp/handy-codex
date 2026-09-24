@@ -165,6 +165,8 @@ const settingUpdaters: {
   app_language: (value) => commands.changeAppLanguageSetting(value as string),
   codex_auth_file: (value) =>
     commands.changeCodexAuthFileSetting(value as string | null),
+  openai_api_key: (value) =>
+    commands.changeOpenAiApiKeySetting(value as string | null),
   theme: (value) => commands.changeThemeSetting(value as string),
   experimental_enabled: (value) =>
     commands.changeExperimentalEnabledSetting(value as boolean),

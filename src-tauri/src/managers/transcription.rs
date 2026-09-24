@@ -5,6 +5,7 @@ use crate::audio_toolkit::{
 use crate::managers::audio::AudioRecordingManager;
 use crate::managers::codex_asr::CodexAsrClient;
 use crate::managers::model::{EngineType, ModelManager};
+use crate::managers::openai_asr::{LiveEvent, OpenAiAsrClient, OpenAiLiveStream};
 use crate::settings::{
     get_settings, AppSettings, ModelUnloadTimeout, OrtAcceleratorSetting,
     TranscribeAcceleratorSetting,
@@ -190,6 +191,10 @@ enum LoadedEngine {
     Canary(CanaryModel),
     Cohere(CohereModel),
     CodexAsr(CodexAsrClient),
+    OpenAiApi(OpenAiAsrClient),
+    /// The live model keeps only the resolved API key; the WebSocket session
+    /// is created per recording by the streaming worker.
+    OpenAiLive(String),
 }
 
 /// RAII guard that clears the `is_loading` flag and notifies waiters on drop.
@@ -537,7 +542,10 @@ impl TranscriptionManager {
             return Err(anyhow::anyhow!(error_msg));
         }
 
-        let model_path = if matches!(&model_info.engine_type, EngineType::CodexAsr) {
+        let model_path = if matches!(
+            &model_info.engine_type,
+            EngineType::CodexAsr | EngineType::OpenAiApi | EngineType::OpenAiLiveAsr
+        ) {
             // Remote providers do not have a local model path. The local loading
             // branches below ignore this placeholder.
             std::path::PathBuf::new()
@@ -723,6 +731,26 @@ impl TranscriptionManager {
                     .unwrap_or_else(CodexAsrClient::new);
                 LoadedEngine::CodexAsr(client)
             }
+            EngineType::OpenAiApi => {
+                let settings = get_settings(&self.app_handle);
+                let api_key =
+                    crate::managers::openai_asr::resolve_api_key(&settings).map_err(|e| {
+                        let error_msg = e.to_string();
+                        emit_loading_failed(&error_msg);
+                        anyhow::anyhow!(error_msg)
+                    })?;
+                LoadedEngine::OpenAiApi(OpenAiAsrClient::new(api_key))
+            }
+            EngineType::OpenAiLiveAsr => {
+                let settings = get_settings(&self.app_handle);
+                let api_key =
+                    crate::managers::openai_asr::resolve_api_key(&settings).map_err(|e| {
+                        let error_msg = e.to_string();
+                        emit_loading_failed(&error_msg);
+                        anyhow::anyhow!(error_msg)
+                    })?;
+                LoadedEngine::OpenAiLive(api_key)
+            }
         };
 
         // Update the current engine and model ID
@@ -902,6 +930,17 @@ impl TranscriptionManager {
                 return;
             }
         };
+
+        // The remote OpenAI live model runs its own WebSocket feed loop; the
+        // transcribe-cpp streaming machinery below does not apply to it.
+        let live_api_key = match &engine {
+            LoadedEngine::OpenAiLive(api_key) => Some(api_key.clone()),
+            _ => None,
+        };
+        if let Some(api_key) = live_api_key {
+            self.run_openai_live_stream(engine, &model_id, rx, api_key);
+            return;
+        }
 
         // Only transcribe-cpp models expose streaming; ONNX engines fall back to
         // batch. The loaded session (not the ModelManager copy) is the source of
@@ -1106,6 +1145,122 @@ impl TranscriptionManager {
         }
         // `_worker` drops here, clearing this worker's active/lease flags after
         // the engine has been returned to the pool.
+    }
+
+    /// Remote OpenAI live streaming: feeds the realtime WebSocket from the
+    /// router's frame channel and mirrors the local streaming loop's
+    /// feed/finalize/cancel contract. A connect failure returns the engine and
+    /// drains the channel so the caller falls back to batch transcription.
+    /// Worker/lease flags are cleared by the `StreamWorkerGuard` in
+    /// `run_stream_worker` when this returns.
+    #[allow(clippy::too_many_arguments)]
+    fn run_openai_live_stream(
+        &self,
+        engine: LoadedEngine,
+        model_id: &str,
+        rx: mpsc::Receiver<StreamCmd>,
+        api_key: String,
+    ) {
+        let settings = get_settings(&self.app_handle);
+        let effective_language =
+            effective_language_for_model(&settings, self.model_manager.as_ref(), model_id);
+        let language_hint = if effective_language == "auto" || effective_language.is_empty() {
+            None
+        } else {
+            Some(effective_language.as_str())
+        };
+        let output_language =
+            resolve_output_language_evidence(&settings, language_hint, &[], false);
+
+        let mut stream = match OpenAiLiveStream::connect(&api_key, language_hint) {
+            Ok(stream) => stream,
+            Err(error) => {
+                error!(
+                    "Live preview: OpenAI realtime session for '{}' could not start ({}); \
+                     falling back to batch transcription",
+                    model_id, error
+                );
+                self.return_engine(engine, model_id);
+                self.router.clear();
+                drain_until_finalize(rx);
+                return;
+            }
+        };
+
+        self.stream_active.store(true, Ordering::Release);
+        self.touch_activity();
+        info!(
+            "Live streaming transcription started (model '{}', OpenAI realtime API)",
+            model_id
+        );
+
+        let mut tentative = String::new();
+        let mut finalize_reply: Option<mpsc::Sender<Option<FinalizedStreamText>>> = None;
+        let mut finalize_result: Option<Option<FinalizedStreamText>> = None;
+
+        while let Ok(cmd) = rx.recv() {
+            match cmd {
+                StreamCmd::Feed(pcm) => {
+                    self.touch_activity();
+                    if let Err(error) = stream.feed(&pcm) {
+                        warn!("OpenAI live feed failed: {}", error);
+                    }
+                    for event in stream.drain_events() {
+                        let LiveEvent::Delta(delta) = event;
+                        tentative.push_str(&delta);
+                        self.emit_stream_text("", &tentative);
+                    }
+                }
+                StreamCmd::Finalize(reply) => {
+                    // Fold in deltas that raced the finalize, then commit.
+                    for event in stream.drain_events() {
+                        let LiveEvent::Delta(delta) = event;
+                        tentative.push_str(&delta);
+                    }
+                    let result = match stream.finalize() {
+                        Ok(text) if !text.trim().is_empty() => Some(FinalizedStreamText {
+                            text,
+                            output_language: output_language.clone(),
+                            supported_languages: Vec::new(),
+                        }),
+                        Ok(_) if !tentative.trim().is_empty() => {
+                            // Empty completed transcript but live deltas exist
+                            // (the user dictated something); keep them.
+                            Some(FinalizedStreamText {
+                                text: tentative.clone(),
+                                output_language: output_language.clone(),
+                                supported_languages: Vec::new(),
+                            })
+                        }
+                        Ok(_) => Some(FinalizedStreamText {
+                            text: String::new(),
+                            output_language: output_language.clone(),
+                            supported_languages: Vec::new(),
+                        }),
+                        Err(error) => {
+                            error!(
+                                "OpenAI live finalize failed: {}; falling back to batch transcription",
+                                error
+                            );
+                            None
+                        }
+                    };
+                    finalize_reply = Some(reply);
+                    finalize_result = Some(result);
+                    break;
+                }
+                StreamCmd::Cancel => {
+                    stream.cancel();
+                    break;
+                }
+            }
+        }
+
+        self.stream_active.store(false, Ordering::Release);
+        self.return_engine(engine, model_id);
+        if let (Some(reply), Some(result)) = (finalize_reply, finalize_result) {
+            let _ = reply.send(result);
+        }
     }
 
     /// Return the leased engine to the mutex, unless the model was switched or
@@ -1448,6 +1603,31 @@ impl TranscriptionManager {
                         client
                             .transcribe(&audio, &validated_language)
                             .map_err(|e| anyhow::anyhow!("Codex transcription failed: {}", e))
+                    }
+                    LoadedEngine::OpenAiApi(client) => {
+                        applied_language_hint = if validated_language != "auto" {
+                            Some(validated_language.clone())
+                        } else {
+                            None
+                        };
+                        client
+                            .transcribe(&audio, &validated_language)
+                            .map_err(|e| anyhow::anyhow!("OpenAI API transcription failed: {}", e))
+                    }
+                    LoadedEngine::OpenAiLive(api_key) => {
+                        // Batch is only reached as the fallback when the live
+                        // WebSocket could not be established. gpt-live-transcribe
+                        // has no file endpoint, so transcribe the recording with
+                        // the file model instead.
+                        applied_language_hint = if validated_language != "auto" {
+                            Some(validated_language.clone())
+                        } else {
+                            None
+                        };
+                        let client = OpenAiAsrClient::new(api_key.clone());
+                        client
+                            .transcribe(&audio, &validated_language)
+                            .map_err(|e| anyhow::anyhow!("OpenAI API transcription failed: {}", e))
                     }
                 }
             }));

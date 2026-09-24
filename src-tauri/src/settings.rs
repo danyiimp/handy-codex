@@ -403,6 +403,11 @@ pub struct AppSettings {
     pub selected_model: String,
     #[serde(default)]
     pub codex_auth_file: Option<String>,
+    /// OpenAI Platform API key for the official gpt-transcribe /
+    /// gpt-live-transcribe models. Falls back to the OPENAI_API_KEY
+    /// environment variable when unset.
+    #[serde(default)]
+    pub openai_api_key: Option<String>,
     #[serde(default)]
     pub onboarding_completed: bool,
     #[serde(default = "default_always_on_microphone")]
@@ -932,6 +937,7 @@ pub fn get_default_settings() -> AppSettings {
         whats_new_last_seen_version: default_whats_new_last_seen_version(),
         selected_model: "".to_string(),
         codex_auth_file: None,
+        openai_api_key: None,
         onboarding_completed: false,
         always_on_microphone: false,
         selected_microphone: None,
