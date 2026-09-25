@@ -359,7 +359,7 @@ impl std::ops::DerefMut for SecretMap {
 /// its `get_default_settings()` value when missing from a stored settings
 /// object, so a partial store can never fail the whole load (#1619).
 /// Field-level defaults below take precedence where present.
-#[derive(Serialize, Deserialize, Debug, Clone, Type)]
+#[derive(Serialize, Deserialize, Clone, Type)]
 #[serde(default)]
 pub struct AppSettings {
     /// Internal settings schema marker for one-time migrations. Fresh installs
@@ -521,6 +521,21 @@ pub struct AppSettings {
     /// `overlay_position` (position `none` → style `None`).
     #[serde(default = "default_overlay_style")]
     pub overlay_style: OverlayStyle,
+}
+
+impl fmt::Debug for AppSettings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let openai_api_key = self
+            .openai_api_key
+            .as_deref()
+            .filter(|key| !key.is_empty())
+            .map(|_| "[REDACTED]");
+        f.debug_struct("AppSettings")
+            .field("selected_model", &self.selected_model)
+            .field("openai_api_key", &openai_api_key)
+            .field("post_process_api_keys", &self.post_process_api_keys)
+            .finish_non_exhaustive()
+    }
 }
 
 fn default_model() -> String {
@@ -1798,6 +1813,7 @@ mod tests {
     #[test]
     fn debug_output_redacts_api_keys() {
         let mut settings = get_default_settings();
+        settings.openai_api_key = Some("sk-proj-openai-secret-key-98765".to_string());
         settings
             .post_process_api_keys
             .insert("openai".to_string(), "sk-proj-secret-key-12345".to_string());
@@ -1813,6 +1829,7 @@ mod tests {
 
         assert!(!debug_output.contains("sk-proj-secret-key-12345"));
         assert!(!debug_output.contains("sk-ant-secret-key-67890"));
+        assert!(!debug_output.contains("sk-proj-openai-secret-key-98765"));
         assert!(debug_output.contains("[REDACTED]"));
     }
 
